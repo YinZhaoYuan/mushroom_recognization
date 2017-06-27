@@ -411,10 +411,10 @@ static void train(const std::string& train_images_file,
 		learningRate = std::max(learningRate*decayRate, minLearningRate);
 		network.setLearningRate(learningRate);
 		EasyCNN::logCritical("epoch[%d] val_loss : %f , val_accuracy : %.4f%%", epochIdx++, val_loss, val_accuracy*100.0f);
+		success = network.saveModel(modelFilePath);
 	}
 	std::tie(val_accuracy, val_loss) = test(network, 128, validate_images, validate_labels);
 	EasyCNN::logCritical("final val_loss : %f , final val_accuracy : %.4f%%", val_loss, val_accuracy*100.0f);
-	success = network.saveModel(modelFilePath);
 	assert(success);
 	EasyCNN::logCritical("finished training.");
 }
@@ -560,7 +560,7 @@ int mushroom_main(int argc, char* argv[])
 	classes = 4;
 #if 1
 	//const std::string train_images_path = "F:/Data/MNIST/ALL/1000";
-	const std::string train_images_path = "F:/Data/Mushroom/20170624_4class_filted/train_src";
+	const std::string train_images_path = "F:/Data/Mushroom/20170624_4class_filted/train";
 	train(train_images_path, model_file, imgResizeChannels, imgResizeHeight, imgResizeWidth);
 	system("pause");
 

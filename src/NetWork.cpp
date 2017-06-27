@@ -317,7 +317,6 @@ namespace EasyCNN
 		}
 		return true;
 	}
-
 	//toy crypt only now! you can custom it.
 	std::string NetWork::encrypt(const std::string& content)
 	{
