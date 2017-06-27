@@ -7,7 +7,7 @@
 #include <opencv2/opencv.hpp>
 
 
-const int classes = 4;
+int classes;
 
 static bool fetch_data(const std::vector<image_t>& images,std::shared_ptr<EasyCNN::DataBucket> inputDataBucket, 
 	const std::vector<label_t>& labels, std::shared_ptr<EasyCNN::DataBucket> labelDataBucket,
@@ -35,8 +35,8 @@ static bool fetch_data(const std::vector<image_t>& images,std::shared_ptr<EasyCN
 	const size_t sizePerImage = inputDataBucket->getSize()._3DSize();
 	const size_t sizePerLabel = labelDataBucket->getSize()._3DSize();
 	assert(sizePerImage == images[0].channels*images[0].width*images[0].height);
-	//scale to 0.0f~1.0f
-	const float scaleRate = 1.0f / 255.0f;
+	//scale data
+	const float scaleRate = 2.0f / 255.0f;
 	for (size_t i = offset; i < actualEndPos; i++)
 	{
 		//image data
@@ -44,7 +44,7 @@ static bool fetch_data(const std::vector<image_t>& images,std::shared_ptr<EasyCN
 		const uint8_t* imageData = &images[i].data[0];
 		for (size_t j = 0; j < sizePerImage;j++)
 		{
-			inputData[j] = (float)imageData[j] * scaleRate;
+			inputData[j] = ((float)imageData[j] - 127.5) * scaleRate;
 		}
 		//label data
 		float* labelData = labelDataBucket->getData().get() + (i - offset)*sizePerLabel;
@@ -96,7 +96,8 @@ static std::shared_ptr<EasyCNN::DataBucket> convertVectorToDataBucket(const std:
 	const size_t width = test_images[0].width;
 	const size_t height = test_images[0].height;
 	const size_t sizePerImage = channel*width*height;
-	const float scaleRate = 1.0f / 255.0f;
+	//const float scaleRate = 1.0f / 255.0f;
+	const float scaleRate = 2.0f / 255.0f;
 	std::shared_ptr<EasyCNN::DataBucket> result(new EasyCNN::DataBucket(EasyCNN::DataSize(number, channel, width, height)));
 	for (size_t i = start; i < start + len; i++)
 	{
@@ -105,7 +106,8 @@ static std::shared_ptr<EasyCNN::DataBucket> convertVectorToDataBucket(const std:
 		const uint8_t* imageData = &test_images[i].data[0];
 		for (size_t j = 0; j < sizePerImage; j++)
 		{
-			inputData[j] = (float)imageData[j] * scaleRate;
+			//inputData[j] = (float)imageData[j] * scaleRate;
+			inputData[j] = ((float)imageData[j] - 127.5) * scaleRate;
 		}
 	}
 	return result;
@@ -193,7 +195,7 @@ static void add_active_layer(EasyCNN::NetWork& network)
 static void add_conv_layer(EasyCNN::NetWork& network,const int number,const int input_channel)
 {
 	std::shared_ptr<EasyCNN::ConvolutionLayer> convLayer(std::make_shared<EasyCNN::ConvolutionLayer>());
-	convLayer->setParamaters(EasyCNN::ParamSize(number, input_channel, 3, 3), 1, 1, true, EasyCNN::ConvolutionLayer::SAME);
+	convLayer->setParamaters(EasyCNN::ParamSize(number, input_channel, 5, 5), 1, 1, true, EasyCNN::ConvolutionLayer::VALID);
 	network.addayer(convLayer);
 }
 static void add_pool_layer(EasyCNN::NetWork& network, const int number)
@@ -222,7 +224,7 @@ static EasyCNN::NetWork buildConvNet(const size_t batch,const size_t channels,co
 	add_input_layer(network);
 
 	//convolution layer
-	add_conv_layer(network, 6 ,1);
+	add_conv_layer(network, 6, channels);
 	add_active_layer(network);
 	//pooling layer
 	add_pool_layer(network, 6);
@@ -236,11 +238,7 @@ static EasyCNN::NetWork buildConvNet(const size_t batch,const size_t channels,co
 	//full connect layer
 	add_fc_layer(network, 120);
 	add_active_layer(network);
-
-	//full connect layer
-	add_fc_layer(network, 84);
-	add_active_layer(network);
-	
+		
 	//network.addayer(std::make_shared<EasyCNN::DropoutLayer>(0.5f));
 
 	//full connect layer
@@ -348,7 +346,7 @@ static void train(const std::string& train_images_file,
 	const float minLearningRate = 0.001f;
 	const size_t testAfterBatches = 50;
 	const size_t maxBatches = 10000;
-	const size_t max_epoch = 10;
+	const size_t max_epoch = 20;
 	const size_t batch = 64;
 	const size_t channels = images[0].channels;
 	const size_t width = images[0].width;
@@ -559,8 +557,10 @@ int mushroom_main(int argc, char* argv[])
 	size_t imgResizeChannels = 3;
 	size_t imgResizeHeight = 32;
 	size_t imgResizeWidth = 32;
+	classes = 4;
 #if 1
-	const std::string train_images_path = "F:/Data/Mushroom/20170624_4class_filted/train";
+	//const std::string train_images_path = "F:/Data/MNIST/ALL/1000";
+	const std::string train_images_path = "F:/Data/Mushroom/20170624_4class_filted/train_src";
 	train(train_images_path, model_file, imgResizeChannels, imgResizeHeight, imgResizeWidth);
 	system("pause");
 
