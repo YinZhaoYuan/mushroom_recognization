@@ -521,14 +521,14 @@ static cv::Mat image_to_cv(const image_t& img)
 int mushroom_main(int argc, char* argv[])
 {
 	EasyCNN::set_thread_num(8);
-	const std::string model_file = "../../res/model/mushroom.modelx";
+	const std::string model_file = "./model/mushroom.modelx";
 	size_t imgResizeChannels = 3;
 	size_t imgResizeHeight = 32;
 	size_t imgResizeWidth = 32;
 	classes = 4;
-#if 0
+#if 1
 	//const std::string train_images_path = "F:/Data/MNIST/ALL/1000";
-	const std::string train_images_path = "F:/Data/Mushroom/20170624_4class_filted/train_src";
+	const std::string train_images_path = "F:/Data/Mushroom/20170624_4class_filted/train";
 	train(train_images_path, model_file, imgResizeChannels, imgResizeHeight, imgResizeWidth);
 	system("pause");
 
