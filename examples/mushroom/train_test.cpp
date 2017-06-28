@@ -481,7 +481,7 @@ static std::shared_ptr<EasyCNN::DataBucket> load_single_image(const std::vector<
 	return result;
 }
 static void test_single(const std::vector<cv::Mat>& samples,
-	std::vector<uint8_t>& result,
+	std::vector<int>& result,
 	const std::string& modelFilePath,
 	size_t imgResizeChannels,
 	size_t imgResizeHeight,
@@ -508,7 +508,7 @@ static void test_single(const std::vector<cv::Mat>& samples,
 	{
 		const uint8_t testProb = getMaxIdxInArray(probData + i*labelSize, probData + (i + 1) * labelSize);
 		EasyCNN::logCritical("label : %d",testProb);
-		result.push_back(testProb);
+		result.push_back((int)testProb);
 	}
 	EasyCNN::logCritical("finished test.");
 }
@@ -526,7 +526,7 @@ int mushroom_main(int argc, char* argv[])
 	size_t imgResizeHeight = 32;
 	size_t imgResizeWidth = 32;
 	classes = 4;
-#if 1
+#if 0
 	//const std::string train_images_path = "F:/Data/MNIST/ALL/1000";
 	const std::string train_images_path = "F:/Data/Mushroom/20170624_4class_filted/train";
 	train(train_images_path, model_file, imgResizeChannels, imgResizeHeight, imgResizeWidth);
@@ -537,7 +537,7 @@ int mushroom_main(int argc, char* argv[])
 	//test(test_images_path, model_file, imgResizeChannels, imgResizeHeight, imgResizeWidth);
 #else
 	std::vector<cv::Mat> samples; 
-	std::vector<uint8_t> result;
+	std::vector<int> result;
 	std::string image_prefix = "F:/Data/Mushroom/20170624_4class_filted/test";
 	samples.push_back(cv::imread(image_prefix + "/0/77.bmp"));
 	samples.push_back(cv::imread(image_prefix + "/0/78 (2).bmp"));
