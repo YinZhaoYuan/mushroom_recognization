@@ -29,7 +29,7 @@ namespace EasyCNN
 		SGDWithMomentum(const float _lr, const float _momentum) :Optimizer(_lr), momentum(_momentum){}
 		virtual void update(std::vector<std::shared_ptr<DataBucket>> params, const std::vector<std::shared_ptr<DataBucket>> gradients) override;
 	private:
-		float momentum = 0.0f;
+		float momentum = 0.9f;
 		std::vector<std::shared_ptr<DataBucket>> prevM;
 	};
 }

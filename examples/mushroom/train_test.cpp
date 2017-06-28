@@ -199,7 +199,7 @@ static void add_conv_layer(EasyCNN::NetWork& network,const int number,const int 
 static void add_pool_layer(EasyCNN::NetWork& network, const int number)
 {
 	std::shared_ptr<EasyCNN::PoolingLayer> poolingLayer(std::make_shared<EasyCNN::PoolingLayer>());
-	poolingLayer->setParamaters(EasyCNN::PoolingLayer::PoolingType::MaxPooling, EasyCNN::ParamSize(1, number, 2, 2), 2, 2, EasyCNN::PoolingLayer::SAME);
+	poolingLayer->setParamaters(EasyCNN::PoolingLayer::PoolingType::MaxPooling, EasyCNN::ParamSize(1, number, 2, 2), 2, 2, EasyCNN::PoolingLayer::VALID);
 	network.addayer(poolingLayer);
 }
 static void add_fc_layer(EasyCNN::NetWork& network, const int output_count)
@@ -338,11 +338,11 @@ static void train(const std::string& train_images_file,
 	EasyCNN::logCritical("load training data done. train set's size is %d,validate set's size is %d", train_images.size(), validate_images.size());
 
 	float learningRate = 0.05f;
-	const float decayRate = 0.8f;
+	const float decayRate = 0.99995f;
 	const float minLearningRate = 0.001f;
 	const size_t testAfterBatches = 50;
 	const size_t maxBatches = 10000;
-	const size_t max_epoch = 20;
+	const size_t max_epoch = 50;
 	const size_t batch = 64;
 	const size_t channels = images[0].channels;
 	const size_t width = images[0].width;
@@ -395,7 +395,10 @@ static void train(const std::string& train_images_file,
 			{
 				break;
 			}
-			batchIdx++;			
+			batchIdx++;
+			//update learning rate
+			learningRate = std::max(learningRate*decayRate, minLearningRate);
+			network.setLearningRate(learningRate);
 		}
 		if (batchIdx >= maxBatches)
 		{
@@ -403,9 +406,6 @@ static void train(const std::string& train_images_file,
 		}		
 		
 		std::tie(val_accuracy, val_loss) = test(network, 128, validate_images, validate_labels);
-		//update learning rate
-		learningRate = std::max(learningRate*decayRate, minLearningRate);
-		network.setLearningRate(learningRate);
 		EasyCNN::logCritical("epoch[%d] val_loss : %f , val_accuracy : %.4f%%", epochIdx++, val_loss, val_accuracy*100.0f);
 		success = network.saveModel(modelFilePath);
 	}
@@ -526,7 +526,7 @@ int mushroom_main(int argc, char* argv[])
 	size_t imgResizeHeight = 32;
 	size_t imgResizeWidth = 32;
 	classes = 4;
-#if 0
+#if 1
 	//const std::string train_images_path = "F:/Data/MNIST/ALL/1000";
 	const std::string train_images_path = "F:/Data/Mushroom/20170624_4class_filted/train";
 	train(train_images_path, model_file, imgResizeChannels, imgResizeHeight, imgResizeWidth);
