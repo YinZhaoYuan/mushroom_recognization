@@ -52,9 +52,6 @@ void getFiles(string path, string subdir_name, vector<string>& files, vector<str
 		_findclose(hFile);
 	}
 }
-
-
-
 bool load_images(const std::string& file_path, std::vector<image_t>& images, std::vector<label_t>& labels, size_t imgResizeChannels, size_t imgResizeHeight, size_t imgResizeWidth)
 {
 	images.clear();

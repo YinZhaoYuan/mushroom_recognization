@@ -96,7 +96,6 @@ static std::shared_ptr<EasyCNN::DataBucket> convertVectorToDataBucket(const std:
 	const size_t width = test_images[0].width;
 	const size_t height = test_images[0].height;
 	const size_t sizePerImage = channel*width*height;
-	//const float scaleRate = 1.0f / 255.0f;
 	const float scaleRate = 2.0f / 255.0f;
 	std::shared_ptr<EasyCNN::DataBucket> result(new EasyCNN::DataBucket(EasyCNN::DataSize(number, channel, width, height)));
 	for (size_t i = start; i < start + len; i++)
@@ -106,7 +105,6 @@ static std::shared_ptr<EasyCNN::DataBucket> convertVectorToDataBucket(const std:
 		const uint8_t* imageData = &test_images[i].data[0];
 		for (size_t j = 0; j < sizePerImage; j++)
 		{
-			//inputData[j] = (float)imageData[j] * scaleRate;
 			inputData[j] = ((float)imageData[j] - 127.5) * scaleRate;
 		}
 	}
@@ -224,23 +222,21 @@ static EasyCNN::NetWork buildConvNet(const size_t batch,const size_t channels,co
 	add_input_layer(network);
 
 	//convolution layer
-	add_conv_layer(network, 6, channels);
+	add_conv_layer(network, 10, channels);
 	add_active_layer(network);
 	//pooling layer
-	add_pool_layer(network, 6);
+	add_pool_layer(network, 10);
 
 	//convolution layer
-	add_conv_layer(network, 16, 6);
+	add_conv_layer(network, 16, 10);
 	add_active_layer(network);
 	//pooling layer
 	add_pool_layer(network, 16);
 
 	//full connect layer
-	add_fc_layer(network, 120);
+	add_fc_layer(network, 80);
 	add_active_layer(network);
 		
-	//network.addayer(std::make_shared<EasyCNN::DropoutLayer>(0.5f));
-
 	//full connect layer
 	add_fc_layer(network, classes);
 
@@ -341,7 +337,7 @@ static void train(const std::string& train_images_file,
 	std::copy(labels.begin() + train_labels.size(), labels.end(), validate_labels.begin());
 	EasyCNN::logCritical("load training data done. train set's size is %d,validate set's size is %d", train_images.size(), validate_images.size());
 
-	float learningRate = 0.1f;
+	float learningRate = 0.05f;
 	const float decayRate = 0.8f;
 	const float minLearningRate = 0.001f;
 	const size_t testAfterBatches = 50;
@@ -451,7 +447,7 @@ static void test(const std::string& test_images_path,
 	assert(success);
 	EasyCNN::logCritical("construct network done.");
 
-	//train
+	//test
 	EasyCNN::logCritical("begin test...");
 	float accuracy = 0.0f, loss = std::numeric_limits<float>::max();
 	std::tie(accuracy,loss) = test(network,batch,images, labels);
@@ -459,7 +455,7 @@ static void test(const std::string& test_images_path,
 	EasyCNN::logCritical("finished test.");
 }
 
-static std::shared_ptr<EasyCNN::DataBucket> loadImage(const std::vector<std::pair<int, cv::Mat>>& samples,
+static std::shared_ptr<EasyCNN::DataBucket> load_single_image(const std::vector<cv::Mat>& samples,
 																						size_t imgResizeChannels,
 																						size_t imgResizeHeight,
 																						size_t imgResizeWidth)
@@ -467,26 +463,25 @@ static std::shared_ptr<EasyCNN::DataBucket> loadImage(const std::vector<std::pai
 	const int number = samples.size();
 	std::shared_ptr<EasyCNN::DataBucket> result(new EasyCNN::DataBucket(EasyCNN::DataSize(number, imgResizeChannels, imgResizeWidth, imgResizeHeight)));
 	const size_t sizePerImage = imgResizeChannels*imgResizeWidth*imgResizeHeight;
-	const float scaleRate = 1.0f / 255.0f;
+	const float scaleRate = 2.0f / 255.0f;
 	for (size_t i = 0; i < (size_t)number; i++)
 	{
-		const cv::Mat srcGrayImg = samples[i].second;
+		const cv::Mat srcImg = samples[i];
 		cv::Mat normalisedImg;
-		cv::resize(srcGrayImg, normalisedImg, cv::Size(imgResizeWidth, imgResizeHeight));
-		cv::Mat binaryImg;
-		cv::threshold(normalisedImg, binaryImg, 127, 255, CV_THRESH_BINARY);
+		cv::resize(srcImg, normalisedImg, cv::Size(imgResizeWidth, imgResizeHeight));
 
 		//image data
 		float* inputData = result->getData().get() + i*sizePerImage;
-		const uint8_t* imageData = binaryImg.data;
+		const uint8_t* imageData = normalisedImg.data;
 		for (size_t j = 0; j < sizePerImage; j++)
 		{
-			inputData[j] = (float)imageData[j] * scaleRate;
+			inputData[j] = ((float)imageData[j] - 127.5) * scaleRate;
 		}
 	}
 	return result;
 }
-static void test_single(const std::vector<std::pair<int, cv::Mat>>& samples,
+static void test_single(const std::vector<cv::Mat>& samples,
+	std::vector<uint8_t>& result,
 	const std::string& modelFilePath,
 	size_t imgResizeChannels,
 	size_t imgResizeHeight,
@@ -505,7 +500,7 @@ static void test_single(const std::vector<std::pair<int, cv::Mat>>& samples,
 	//train
 	EasyCNN::logCritical("begin test...");
 
-	const std::shared_ptr<EasyCNN::DataBucket> inputDataBucket = loadImage(samples, imgResizeChannels, imgResizeHeight, imgResizeWidth);
+	const std::shared_ptr<EasyCNN::DataBucket> inputDataBucket = load_single_image(samples, imgResizeChannels, imgResizeHeight, imgResizeWidth);
 	const std::shared_ptr<EasyCNN::DataBucket> probDataBucket = network.testBatch(inputDataBucket);
 	const size_t labelSize = probDataBucket->getSize()._3DSize();
 	const float* probData = probDataBucket->getData().get();
@@ -513,11 +508,7 @@ static void test_single(const std::vector<std::pair<int, cv::Mat>>& samples,
 	{
 		const uint8_t testProb = getMaxIdxInArray(probData + i*labelSize, probData + (i + 1) * labelSize);
 		EasyCNN::logCritical("label : %d",testProb);
-
-		const cv::Mat srcGrayImg = samples[i].second;
-		cv::destroyAllWindows();
-		cv::imshow("src", srcGrayImg);
-		cv::waitKey(0);
+		result.push_back(testProb);
 	}
 	EasyCNN::logCritical("finished test.");
 }
@@ -527,29 +518,6 @@ static cv::Mat image_to_cv(const image_t& img)
 	cv::Mat result(img.height, img.width,CV_8UC1,(void*)(&img.data[0]),img.width);
 	return result.clone();
 }
-//static std::vector<std::pair<int, cv::Mat>> export_random_mnist_image(const std::string& mnist_test_images_file,
-//	const std::string& mnist_test_labels_file, 
-//	const int test_size)
-//{
-//	std::vector<std::pair<int, cv::Mat>> result;
-//	bool success = true;
-//	std::vector<image_t> images;
-//	success = load_images(mnist_test_images_file, images);
-//	assert(success);
-//	std::vector<label_t> labels;
-//	success = load_labels(mnist_test_labels_file, labels);
-//	assert(success);
-//	std::default_random_engine generator;
-//	std::uniform_int_distribution<int> dis(0, images.size());
-//	for (int i = 0; i < test_size;i++)
-//	{
-//		const int idx = dis(generator);
-//		const int label = labels[idx].data;
-//		const cv::Mat image = image_to_cv(images[idx]);
-//		result.push_back(std::make_pair(label, image));
-//	}
-//	return result;
-//}
 int mushroom_main(int argc, char* argv[])
 {
 	EasyCNN::set_thread_num(8);
@@ -558,9 +526,9 @@ int mushroom_main(int argc, char* argv[])
 	size_t imgResizeHeight = 32;
 	size_t imgResizeWidth = 32;
 	classes = 4;
-#if 1
+#if 0
 	//const std::string train_images_path = "F:/Data/MNIST/ALL/1000";
-	const std::string train_images_path = "F:/Data/Mushroom/20170624_4class_filted/train";
+	const std::string train_images_path = "F:/Data/Mushroom/20170624_4class_filted/train_src";
 	train(train_images_path, model_file, imgResizeChannels, imgResizeHeight, imgResizeWidth);
 	system("pause");
 
@@ -568,10 +536,26 @@ int mushroom_main(int argc, char* argv[])
 	//const std::string test_images_path = "F:/Data/Mushroom/20170624_4class_filted/test";
 	//test(test_images_path, model_file, imgResizeChannels, imgResizeHeight, imgResizeWidth);
 #else
-	const std::string mnist_test_images_file = "../../res/mnist_data/t10k-images.idx3-ubyte";
-	const std::string mnist_test_labels_file = "../../res/mnist_data/t10k-labels.idx1-ubyte";
-	std::vector<std::pair<int, cv::Mat>> samples = export_random_mnist_image(mnist_test_images_file, mnist_test_labels_file, 10);
-	test_single(samples, model_file);
+	std::vector<cv::Mat> samples; 
+	std::vector<uint8_t> result;
+	std::string image_prefix = "F:/Data/Mushroom/20170624_4class_filted/test";
+	samples.push_back(cv::imread(image_prefix + "/0/77.bmp"));
+	samples.push_back(cv::imread(image_prefix + "/0/78 (2).bmp"));
+	samples.push_back(cv::imread(image_prefix + "/0/87 (2).bmp"));
+	samples.push_back(cv::imread(image_prefix + "/0/92 (2).bmp"));
+	samples.push_back(cv::imread(image_prefix + "/1/83.bmp"));
+	samples.push_back(cv::imread(image_prefix + "/1/94 (2).bmp"));
+	samples.push_back(cv::imread(image_prefix + "/1/100 (2).bmp"));
+	samples.push_back(cv::imread(image_prefix + "/1/111 (2).bmp"));
+	samples.push_back(cv::imread(image_prefix + "/2/67 (2).bmp"));
+	samples.push_back(cv::imread(image_prefix + "/2/67.bmp"));
+	samples.push_back(cv::imread(image_prefix + "/2/68 (2).bmp"));
+	samples.push_back(cv::imread(image_prefix + "/2/69 (2).bmp"));
+	samples.push_back(cv::imread(image_prefix + "/3/75 (2).bmp"));
+	samples.push_back(cv::imread(image_prefix + "/3/75.bmp"));
+	samples.push_back(cv::imread(image_prefix + "/3/77 (2).bmp"));
+	samples.push_back(cv::imread(image_prefix + "/3/77.bmp"));
+	test_single(samples, result, model_file, imgResizeChannels, imgResizeHeight, imgResizeWidth);
 #endif
 	return 0;
 }
